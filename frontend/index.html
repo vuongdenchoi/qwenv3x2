@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design Check AI – Kiểm tra lỗi thiết kế 2D</title>
+  <meta name="description" content="Hệ thống AI phát hiện lỗi trong bản thiết kế 2D bằng RAG + Qwen Multimodal" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================
+       Design Tokens
+    ============================ */
+    :root {
+      --bg-dark:    #0d0f14;
+      --bg-card:    #161922;
+      --bg-hover:   #1e2230;
+      --accent:     #6c63ff;
+      --accent-2:   #00d2ff;
+      --error-red:  #ff4d6d;
+      --ok-green:   #06d6a0;
+      --text-main:  #f0f2ff;
+      --text-muted: #7b82a0;
+      --border:     #252a3a;
+      --shadow:     0 8px 32px rgba(0,0,0,.5);
+      --radius:     14px;
+      --radius-sm:  8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ============================
+       Header
+    ============================ */
+    header {
+      width: 100%;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: linear-gradient(90deg, #0d0f14 0%, #161922 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    header .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; }
+    header span { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; }
+
+    /* ============================
+       Main Layout
+    ============================ */
+    main {
+      width: 100%;
+      max-width: 1200px;
+      padding: 36px 24px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 28px;
+    }
+
+    @media (max-width: 800px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    /* ============================
+       Card
+    ============================ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+
+    /* ============================
+       Upload Zone
+    ============================ */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(108,99,255,.06);
+    }
+    #drop-zone .upload-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    #drop-zone p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; }
+    #drop-zone strong { color: var(--text-main); }
+    #file-input { display: none; }
+
+    /* Preview thumb */
+    #thumb-preview {
+      width: 100%;
+      border-radius: var(--radius-sm);
+      margin-top: 16px;
+      display: none;
+      max-height: 180px;
+      object-fit: contain;
+    }
+
+    /* ============================
+       Query input
+    ============================ */
+    .form-group { margin-top: 18px; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .form-group input:focus { border-color: var(--accent); }
+
+    /* ============================
+       Analyze Button
+    ============================ */
+    #analyze-btn {
+      margin-top: 20px;
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    #analyze-btn:hover { opacity: 0.88; }
+    #analyze-btn:active { transform: scale(0.98); }
+    #analyze-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Spinner */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ============================
+       Result Panel
+    ============================ */
+    #result-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Image + overlay container */
+    #image-container {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+      background: #000;
+      border-radius: var(--radius);
+      overflow: hidden;
+      min-height: 200px;
+    }
+    #canvas-display {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: var(--radius);
+    }
+
+    /* Error boxes overlay */
+    #overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+
+    /* ============================
+       Error List
+    ============================ */
+    #error-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .error-item {
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--error-red);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      animation: fadeIn .3s ease;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .error-item:hover { background: #252a3a; }
+    .error-item.highlighted { border-left-color: var(--accent-2); background: rgba(0,210,255,.07); }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+
+    .error-num {
+      background: var(--error-red);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .error-text { font-size: 0.88rem; line-height: 1.55; }
+    .error-coords {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      font-family: monospace;
+    }
+
+    /* Status messages */
+    .status-msg {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .status-msg .icon { font-size: 3rem; margin-bottom: 12px; }
+
+    .badge-ok {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(6,214,160,.12);
+      border: 1px solid var(--ok-green);
+      color: var(--ok-green);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .badge-err {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,77,109,.12);
+      border: 1px solid var(--error-red);
+      color: var(--error-red);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* API key warning */
+    #api-warning {
+      background: rgba(255,200,0,.08);
+      border: 1px solid rgba(255,200,0,.3);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      color: #ffd166;
+      margin-top: 12px;
+      display: none;
+    }
+
+    footer {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      padding: 24px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <div class="logo-icon">🔍</div>
+  <h1>Design Check <span style="color:var(--accent)">AI</span></h1>
+  <span>RAG + Qwen VL · Kiểm tra lỗi thiết kế 2D</span>
+</header>
+
+<!-- ===== MAIN ===== -->
+<main>
+
+  <!-- LEFT: Upload + Config -->
+  <aside>
+    <div class="card">
+      <div class="card-title">📁 Upload thiết kế</div>
+
+      <!-- Drop Zone -->
+      <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-icon">🎨</div>
+        <p><strong>Kéo thả ảnh vào đây</strong><br/>hoặc click để chọn file</p>
+        <p style="margin-top:8px;font-size:.75rem;">JPEG · PNG · WEBP · tối đa 10MB</p>
+      </div>
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" />
+      <img id="thumb-preview" alt="Preview" />
+
+      <!-- Query -->
+      <div class="form-group">
+        <label for="query-input">🔎 Context query (tuỳ chỉnh retrieval)</label>
+        <input type="text" id="query-input"
+               value="graphic design poster advertisement"
+               placeholder="e.g. logo design branding" />
+      </div>
+
+      <!-- API Key -->
+      <div class="form-group">
+        <label for="apikey-input">🔑 Dashscope API Key</label>
+        <input type="password" id="apikey-input"
+               placeholder="sk-..." />
+      </div>
+
+      <div id="api-warning">
+        ⚠️ Nhập API Key để gọi Qwen VL API hoặc set biến môi trường <code>DASHSCOPE_API_KEY</code> trên server.
+      </div>
+
+      <button id="analyze-btn" onclick="startAnalysis()">
+        <span class="spinner" id="spinner"></span>
+        <span id="btn-text">🚀 Phân tích thiết kế</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- RIGHT: Results -->
+  <section id="result-panel">
+
+    <!-- Image with bounding box overlay -->
+    <div class="card" id="image-card" style="display:none">
+      <div class="card-title" id="result-badge-row">
+        🖼️ Kết quả phân tích
+      </div>
+      <div id="image-container">
+        <canvas id="canvas-display"></canvas>
+      </div>
+    </div>
+
+    <!-- Error list -->
+    <div class="card">
+      <div class="card-title">⚠️ Danh sách lỗi phát hiện</div>
+      <div id="error-list">
+        <div class="status-msg">
+          <div class="icon">📋</div>
+          Upload ảnh và nhấn <strong>Phân tích thiết kế</strong> để bắt đầu.
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<footer>Design Check AI · RAG + Qwen VL Multimodal · 2026</footer>
+
+<!-- ===== SCRIPT ===== -->
+<script>
+// -----------------------------------------------------------------------
+// State
+// -----------------------------------------------------------------------
+let uploadedFile = null;
+let uploadedImage = null; // HTMLImageElement
+let currentErrors = [];
+
+// -----------------------------------------------------------------------
+// Drop zone
+// -----------------------------------------------------------------------
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const thumbPreview = document.getElementById('thumb-preview');
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  uploadedFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    thumbPreview.src = e.target.result;
+    thumbPreview.style.display = 'block';
+    dropZone.querySelector('.upload-icon').textContent = '✅';
+    dropZone.querySelector('p').innerHTML = `<strong>${file.name}</strong>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+// -----------------------------------------------------------------------
+// Analysis
+// -----------------------------------------------------------------------
+async function startAnalysis() {
+  if (!uploadedFile) {
+    alert('Vui lòng upload ảnh trước!');
+    return;
+  }
+
+  const apiKey = document.getElementById('apikey-input').value.trim();
+  const query  = document.getElementById('query-input').value.trim();
+
+  setLoading(true);
+
+  const formData = new FormData();
+  formData.append('file', uploadedFile);
+  formData.append('query', query || 'graphic design poster advertisement');
+
+  // If API key provided, send as header (optional – can also be set on server)
+  const headers = {};
+  if (apiKey) headers['X-API-Key'] = apiKey;
+
+  try {
+    const res = await fetch('/analyze', {
+      method: 'POST',
+      body: formData,
+      headers,
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    renderResults(data);
+
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+// -----------------------------------------------------------------------
+// Render results
+// -----------------------------------------------------------------------
+function renderResults(data) {
+  currentErrors = data.errors || [];
+  const imgW = data.image_size?.width  || 1;
+  const imgH = data.image_size?.height || 1;
+
+  // Show image card
+  document.getElementById('image-card').style.display = 'block';
+
+  // Draw on canvas
+  const canvas = document.getElementById('canvas-display');
+  const ctx    = canvas.getContext('2d');
+  const img    = new Image();
+  img.src = URL.createObjectURL(uploadedFile);
+  img.onload = () => {
+    canvas.width  = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+
+    // Draw image
+    ctx.drawImage(img, 0, 0);
+
+    // Draw bounding boxes
+    currentErrors.forEach((err, i) => {
+      const [x1, y1, x2, y2] = err.box_2d;
+      const colors = ['#ff4d6d', '#6c63ff', '#00d2ff', '#ffd166', '#06d6a0'];
+      const color  = colors[i % colors.length];
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = Math.max(2, canvas.width / 300);
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+      // Label badge
+      ctx.fillStyle = color;
+      const badge  = `${i + 1}`;
+      const bSize  = Math.max(18, canvas.width / 40);
+      ctx.beginPath();
+      ctx.arc(x1 + bSize / 2, y1 + bSize / 2, bSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${bSize * 0.6}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badge, x1 + bSize / 2, y1 + bSize / 2);
+    });
+  };
+
+  // Badge
+  const badgeRow = document.getElementById('result-badge-row');
+  if (currentErrors.length === 0) {
+    badgeRow.innerHTML = `🖼️ Kết quả &nbsp;<span class="badge-ok">✅ Không phát hiện lỗi</span>`;
+  } else {
+    badgeRow.innerHTML = `🖼️ Kết quả &nbsp;<span class="badge-err">⚠️ ${currentErrors.length} lỗi</span>`;
+  }
+
+  // Error list
+  const list = document.getElementById('error-list');
+  if (currentErrors.length === 0) {
+    list.innerHTML = `<div class="status-msg">
+      <div class="icon">✅</div>
+      <strong style="color:var(--ok-green)">Thiết kế đạt chuẩn!</strong>
+      <p style="margin-top:8px">Không phát hiện vi phạm quy tắc thiết kế nào.</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = currentErrors.map((err, i) => {
+    const [x1, y1, x2, y2] = err.box_2d;
+    return `
+    <div class="error-item" id="err-${i}" onclick="highlightError(${i})">
+      <div class="error-num">${i + 1}</div>
+      <div>
+        <div class="error-text">${escapeHtml(err.reason)}</div>
+        <div class="error-coords">box [${x1}, ${y1}, ${x2}, ${y2}]</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function highlightError(idx) {
+  document.querySelectorAll('.error-item').forEach(el => el.classList.remove('highlighted'));
+  document.getElementById(`err-${idx}`)?.classList.add('highlighted');
+}
+
+// -----------------------------------------------------------------------
+// UI helpers
+// -----------------------------------------------------------------------
+function setLoading(on) {
+  const btn     = document.getElementById('analyze-btn');
+  const spinner = document.getElementById('spinner');
+  const txt     = document.getElementById('btn-text');
+  btn.disabled        = on;
+  spinner.style.display = on ? 'block' : 'none';
+  txt.textContent = on ? 'Đang phân tích...' : '🚀 Phân tích thiết kế';
+}
+
+function showError(msg) {
+  const list = document.getElementById('error-list');
+  list.innerHTML = `<div class="status-msg">
+    <div class="icon">❌</div>
+    <strong style="color:var(--error-red)">Lỗi kết nối</strong>
+    <p style="margin-top:8px;font-size:.85rem;">${escapeHtml(msg)}</p>
+    <p style="margin-top:6px;font-size:.8rem;color:var(--text-muted)">
+      Đảm bảo backend đang chạy tại http://localhost:8000
+    </p>
+  </div>`;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Show API warning if key empty on focus-out
+document.getElementById('analyze-btn').addEventListener('focus', () => {
+  const key = document.getElementById('apikey-input').value.trim();
+  const warn = document.getElementById('api-warning');
+  warn.style.display = key ? 'none' : 'block';
+});
+</script>
+
+</body>
+</html>
