@@ -117,9 +117,13 @@ class PostProcessAgent:
         for item in cleaned:
             severity_summary[item["s"]] += 1
 
+        usage_data = raw_result.get("_usage", {}) if isinstance(raw_result, dict) else {}
         return {
             "e"  : cleaned,
             "isz": {"w": img_w, "h": img_h},
             "te" : len(cleaned),
             "ss" : severity_summary,
+            "inputtoken": usage_data.get("input_tokens", 0),
+            "outputtoken": usage_data.get("output_tokens", 0),
+            "totaltoken": usage_data.get("total_tokens", 0)
         }

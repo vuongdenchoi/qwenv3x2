@@ -19,6 +19,24 @@ QWEN_MODEL   = os.getenv("QWEN_MODEL", "qwen3-vl-flash")
 # Dùng endpoint quốc tế
 dashscope.base_http_api_url = "https://dashscope-intl.aliyuncs.com/api/v1"
 
+def extract_usage(response) -> dict:
+    if hasattr(response, 'usage') and response.usage:
+        try:
+            u = response.usage
+            if isinstance(u, dict):
+                return {
+                    "input_tokens": int(u.get("input_tokens", 0)),
+                    "output_tokens": int(u.get("output_tokens", 0)),
+                    "total_tokens": int(u.get("total_tokens", 0)),
+                }
+            return {
+                "input_tokens": int(getattr(u, "input_tokens", 0)),
+                "output_tokens": int(getattr(u, "output_tokens", 0)),
+                "total_tokens": int(getattr(u, "total_tokens", 0)),
+            }
+        except Exception:
+            pass
+    return {}
 
 class QwenAgent:
     def __init__(self, api_key=None, model=None):
@@ -99,7 +117,10 @@ class QwenAgent:
         except (KeyError, IndexError, AttributeError) as e:
             raise RuntimeError(f"Không thể parse response: {e}\nFull: {response}")
 
-        return self._parse_json_response(raw_text)
+        parsed = self._parse_json_response(raw_text)
+        if isinstance(parsed, dict):
+            parsed["_usage"] = extract_usage(response)
+        return parsed
 
     def chat_text(
         self,
@@ -107,7 +128,7 @@ class QwenAgent:
         system_prompt: str,
         user_text: str,
         history_messages: Optional[List[Dict[str, Any]]] = None,
-    ) -> str:
+    ) -> tuple:
         """
         Text-only chat with the same Qwen endpoint (no image).
         Returns assistant text.
@@ -139,14 +160,17 @@ class QwenAgent:
                 f"{response.message} (request_id={response.request_id})"
             )
 
+        usage = extract_usage(response)
         try:
             content = response.output.choices[0].message.content
             if isinstance(content, list):
-                return "".join(
+                raw_text = "".join(
                     item.get("text", "") for item in content
                     if isinstance(item, dict)
                 ).strip()
-            return str(content).strip()
+            else:
+                raw_text = str(content).strip()
+            return raw_text, usage
         except (KeyError, IndexError, AttributeError) as e:
             raise RuntimeError(f"Không thể parse response: {e}\nFull: {response}")
 
@@ -161,12 +185,15 @@ class QwenAgent:
         Text-only chat, but forces the model to return JSON.
         Returns parsed dict.
         """
-        raw = self.chat_text(
+        raw_text, usage = self.chat_text(
             system_prompt=system_prompt,
             user_text=user_text,
             history_messages=history_messages,
         )
-        return self._parse_json_response(raw)
+        parsed = self._parse_json_response(raw_text)
+        if isinstance(parsed, dict):
+            parsed["_usage"] = usage
+        return parsed
 
     def locate_box(
         self,
@@ -243,7 +270,10 @@ class QwenAgent:
         except (KeyError, IndexError, AttributeError) as e:
             raise RuntimeError(f"Không thể parse response: {e}\nFull: {response}")
 
-        return self._parse_json_response(raw_text)
+        parsed = self._parse_json_response(raw_text)
+        if isinstance(parsed, dict):
+            parsed["_usage"] = extract_usage(response)
+        return parsed
 
     # ------------------------------------------------------------------
     # JSON parser – strip markdown fences nếu có
