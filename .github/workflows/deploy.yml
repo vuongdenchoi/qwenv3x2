@@ -21,4 +21,4 @@ jobs:
             cd /opt/willa/ai
             git pull --ff-only
             cd /opt/willa/infra
-            docker compose --env-file .env up -d --build ai-server
+            docker compose --env-file .env up -d --no-deps --build ai-server
