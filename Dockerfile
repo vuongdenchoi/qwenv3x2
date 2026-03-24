@@ -22,6 +22,8 @@ COPY design_rules /app/design_rules
 
 WORKDIR /app/backend
 
+RUN python knowledge_base/build_index.py
+
 EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
