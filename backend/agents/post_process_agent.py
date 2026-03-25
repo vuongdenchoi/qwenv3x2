@@ -64,11 +64,21 @@ class PostProcessAgent:
             except (ValueError, TypeError):
                 continue
 
-            # Convert từ normalized 0-1000 (Qwen VL) sang pixel thực
-            x1 = int(x1 / 1000 * img_w)
-            y1 = int(y1 / 1000 * img_h)
-            x2 = int(x2 / 1000 * img_w)
-            y2 = int(y2 / 1000 * img_h)
+            # Adaptive Coordinate Conversion:
+            # - qwen3-vl-flash (và series 2.5) dùng normalized 0-1000.
+            # - qwen-vl-max thường dùng pixel thực nếu ảnh lớn.
+            # Heuristic: Nếu có giá trị > 1000 -> chắc chắn là pixel. 
+            # Nếu tất cả <= 1000 và ảnh gốc lớn (>1000px) -> khả năng cao là normalized.
+            needs_normalization = all(v <= 1000 for v in [x1, y1, x2, y2])
+            
+            if needs_normalization:
+                # Chỉ normalize nếu giá trị nhỏ và ảnh thực tế lớn hơn
+                # (Nếu ảnh < 1000 thì pixel hay normalized đều tương đương, không hại gì)
+                x1 = int(x1 / 1000 * img_w)
+                y1 = int(y1 / 1000 * img_h)
+                x2 = int(x2 / 1000 * img_w)
+                y2 = int(y2 / 1000 * img_h)
+            # Nếu không (đã là pixel) thì giữ nguyên.
 
             # Clamp vào image bounds
             x1 = max(0, min(x1, img_w))

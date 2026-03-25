@@ -92,6 +92,8 @@ class QwenAgent:
                 model=self.model,
                 messages=messages,
                 stream=False,
+                temperature=0.0,
+                top_p=0.01,
             )
         except Exception as e:
             raise RuntimeError(f"DashScope SDK error: {e}")
@@ -150,6 +152,8 @@ class QwenAgent:
                 model=self.model,
                 messages=messages,
                 stream=False,
+                temperature=0.0,
+                top_p=0.01,
             )
         except Exception as e:
             raise RuntimeError(f"DashScope SDK error: {e}")
@@ -254,6 +258,8 @@ class QwenAgent:
                 model=self.model,
                 messages=messages,
                 stream=False,
+                temperature=0.0,
+                top_p=0.01,
             )
         except Exception as e:
             raise RuntimeError(f"DashScope SDK error: {e}")

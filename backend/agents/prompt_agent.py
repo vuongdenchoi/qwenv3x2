@@ -59,6 +59,15 @@ Return ONLY valid JSON — no markdown, no extra text:
 }}
 
 If after thorough inspection the design truly has NO violations at all, return {{"e": []}}.
+
+=== FEW-SHOT EXAMPLE (Reference output for a greeting card with many issues) ===
+{{"e": [
+  {{"c": [30, 0, 563, 136], "r": "Title text is in a decorative script font with low contrast against the blended background, violating Rule 7 — figure-ground must be clear at a glance. Text is hard to read.", "s": "major", "g": "poster_design"}},
+  {{"c": [306, 136, 629, 257], "r": "Bold purple-outlined text clashes with the rose background and other elements. High-contrast outline causes it to fight for attention with the central figure, creating visual noise.", "s": "major", "g": "poster_design"}},
+  {{"c": [329, 448, 623, 636], "r": "Multiple text lines layered haphazardly with inconsistent sizing, spacing, and alignment. Violates Rule 14 — framing must be intentional. Composition feels cluttered and chaotic.", "s": "major", "g": "layout_rules"}},
+  {{"c": [0, 0, 649, 896], "r": "Entire design lacks visual hierarchy and pattern continuity (Rule 16). No consistent typographic system, color palette, or compositional structure — feels like a random collage.", "s": "critical", "g": "pattern_design"}}
+]}}
+=== END OF EXAMPLE — Now analyze the NEW image below with the same critical depth ===
 """
 
 

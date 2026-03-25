@@ -1,0 +1,61 @@
+{
+    "e": [
+        {
+            "c": [
+                108,
+                389,
+                300,
+                542
+            ],
+            "r": "The text 'Simples. Verde. Essencial.' is rendered in a bold sans-serif typeface that lacks connotative tone appropriate for a nature brand — violating Rule 65 (Graphic resonance). The font feels generic and doesn’t evoke organic, essential, or natural associations; it’s visually neutral rather than thematically resonant. [LỖI WCAG: Tỷ lệ tương phản chỉ đạt 2.1:1, dưới mức chuẩn 4.5:1. Bạn cần tăng độ tương phản sáng tối giữa chữ và nền.]",
+            "s": "critical",
+            "g": "typography"
+        },
+        {
+            "c": [
+                108,
+                575,
+                300,
+                630
+            ],
+            "r": "The tagline 'A natureza dá o toque que você precisa.' uses a smaller, lighter sans-serif font that blends into the background due to low contrast with the green overlay. This violates Rule 7 — figure-ground must be clear at a glance. The text is not immediately legible against the semi-transparent shape.",
+            "s": "major",
+            "g": "poster_design"
+        },
+        {
+            "c": [
+                108,
+                660,
+                257,
+                696
+            ],
+            "r": "The WhatsApp contact button includes an icon and text ('(11) 9 45XX - 0000') within a rounded rectangle. The icon is a small pictogram (WhatsApp logo), which functions as an icon per Rule 10 — but its size and placement make it visually ambiguous without context. It’s not accompanied by a text label like 'WhatsApp' or 'Contato', violating Rule 15 for UI icons: icons must reinforce text labels, not substitute them.",
+            "s": "major",
+            "g": "icon_design"
+        },
+        {
+            "c": [
+                312,
+                182,
+                673,
+                816
+            ],
+            "r": "The potted plant is placed directly on the green background without any visual separation or layering effect to distinguish it as the primary figure. While the green overlay helps, the plant’s shadow and lighting are too soft and blend into the background, risking loss of figure-ground clarity — violating Rule 7 (Figure-Ground must be clear at a glance).",
+            "s": "major",
+            "g": "poster_design"
+        }
+    ],
+    "isz": {
+        "w": 736,
+        "h": 920
+    },
+    "te": 4,
+    "ss": {
+        "minor": 0,
+        "major": 3,
+        "critical": 1
+    },
+    "inputtoken": 2898,
+    "outputtoken": 827,
+    "totaltoken": 3725
+}
