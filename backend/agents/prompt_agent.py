@@ -44,7 +44,7 @@ Instructions:
    - Lack of visual hierarchy (layout_rules)
    - Conflicting color schemes (color_theory)
    - Overcrowded layout with insufficient whitespace (layout_rules)
-5. Bounding box format: [x1, y1, x2, y2] in pixel coordinates (top-left origin).
+5. Bounding box format: [x1, y1, x2, y2] in normalized coordinates from 0 to 1000 (top-left origin, where 1000 means full width/height).
 
 Return ONLY valid JSON — no markdown, no extra text:
 {{

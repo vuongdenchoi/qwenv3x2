@@ -64,6 +64,12 @@ class PostProcessAgent:
             except (ValueError, TypeError):
                 continue
 
+            # Convert từ normalized 0-1000 (Qwen VL) sang pixel thực
+            x1 = int(x1 / 1000 * img_w)
+            y1 = int(y1 / 1000 * img_h)
+            x2 = int(x2 / 1000 * img_w)
+            y2 = int(y2 / 1000 * img_h)
+
             # Clamp vào image bounds
             x1 = max(0, min(x1, img_w))
             y1 = max(0, min(y1, img_h))
